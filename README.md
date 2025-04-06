@@ -43,23 +43,27 @@ The server is structured around the Model Context Protocol (MCP) for communicati
 ### Installation
 
 1. Clone the repository:
-   ```
-   git clone https://github.com/your-username/azure-devops-mcp.git
-   cd azure-devops-mcp
+
+   ```bash
+   git clone https://github.com/johnib/ado-mcp.git
+   cd ado-mcp
    ```
 
 2. Install dependencies:
-   ```
+
+   ```bash
    npm install
    ```
 
 3. Set up your environment:
 
    Option A: Using the automated setup script (recommended):
-   ```
+
+   ```bash
    chmod +x setup_env.sh
    ./setup_env.sh
    ```
+
    This script will:
    - Check for and install the Azure CLI DevOps extension if needed
    - Let you select from your available Azure DevOps organizations
@@ -68,25 +72,30 @@ The server is structured around the Model Context Protocol (MCP) for communicati
    - Generate your `.env` file with the correct settings
 
    Option B: Manual setup:
-   ```
+
+   ```bash
    cp .env.example .env
    ```
+
    Then edit the `.env` file with your Azure DevOps credentials (see Authentication section below).
 
 ### Running the Server
 
 Build the TypeScript files:
-```
+
+```bash
 npm run build
 ```
 
 Start the server:
-```
+
+```bash
 npm start
 ```
 
 For development with hot reloading:
-```
+
+```bash
 npm run dev
 ```
 
@@ -128,6 +137,7 @@ Key environment variables include:
 For detailed troubleshooting information for each authentication method, see the [Authentication Guide](docs/authentication.md#troubleshooting-authentication-issues).
 
 Common issues include:
+
 - Invalid or expired credentials
 - Insufficient permissions
 - Network connectivity problems
@@ -142,6 +152,7 @@ For technical details about how authentication is implemented in the Azure DevOp
 The Azure DevOps MCP server provides a variety of tools for interacting with Azure DevOps resources. For detailed documentation on each tool, please refer to the corresponding documentation.
 
 ### Core Navigation Tools
+
 - `list_organizations`: List all accessible organizations
 - `list_projects`: List all accessible projects
 - `list_repositories`: List all repositories in a project
@@ -149,16 +160,19 @@ The Azure DevOps MCP server provides a variety of tools for interacting with Azu
 For comprehensive documentation on all core navigation tools, see the [Core Navigation Tools Guide](docs/tools/core-navigation.md).
 
 ### Project Tools
+
 - `get_project`: Get details of a specific project
 
 For project-specific tool documentation, see the [Projects Tools Guide](docs/tools/projects.md).
 
 ### Repository Tools
+
 - `get_repository`: Get repository details
 
 For repository-specific tool documentation, see the [Repositories Tools Guide](docs/tools/repositories.md).
 
 ### Work Item Tools
+
 - `get_work_item`: Retrieve a work item by ID
 - `create_work_item`: Create a new work item
 
@@ -177,13 +191,15 @@ npm run test:unit
 Integration tests require a connection to a real Azure DevOps instance. To run them:
 
 1. Ensure your `.env` file is configured with valid Azure DevOps credentials:
-   ```
+
+   ```ini
    AZURE_DEVOPS_ORG_URL=https://dev.azure.com/your-organization
    AZURE_DEVOPS_PAT=your-personal-access-token
    AZURE_DEVOPS_DEFAULT_PROJECT=your-project-name
    ```
 
 2. Run the integration tests:
+
    ```bash
    npm run test:integration
    ```
