@@ -216,7 +216,7 @@ export async function listWorkItems(
       workItemIds,
       fields,
       undefined,
-      WorkItemExpand.All,
+      WorkItemExpand.None,
     );
 
     if (!workItems) {
