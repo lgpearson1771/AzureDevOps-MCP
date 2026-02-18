@@ -149,7 +149,7 @@ describe('Work Items Operations', () => {
         [123, 124],
         ["System.Id", "System.Title", "System.State", "System.AssignedTo"],
         undefined,
-        4,
+        0,
       );
       expect(result).toEqual(mockWorkItems);
     });

@@ -87,7 +87,7 @@ describe('List Work Items Operation', () => {
         [123, 124],
         ["System.Id", "System.Title", "System.State", "System.AssignedTo"],
         undefined,
-        WorkItemExpand.All,
+        WorkItemExpand.None,
       );
       expect(result).toEqual(mockWorkItems);
     });
@@ -189,7 +189,7 @@ describe('List Work Items Operation', () => {
         [123], // Only the first ID should be used due to top: 1
         ["System.Id", "System.Title", "System.State", "System.AssignedTo"],
         undefined,
-        WorkItemExpand.All,
+        WorkItemExpand.None,
       );
       expect(result).toEqual([mockWorkItems[0]]);
     });
@@ -213,7 +213,7 @@ describe('List Work Items Operation', () => {
         [124], // Only the second ID should be used due to skip: 1
         ["System.Id", "System.Title", "System.State", "System.AssignedTo"],
         undefined,
-        WorkItemExpand.All,
+        WorkItemExpand.None,
       );
       expect(result).toEqual([mockWorkItems[1]]);
     });

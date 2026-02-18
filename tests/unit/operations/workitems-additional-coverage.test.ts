@@ -116,7 +116,7 @@ describe('Work Items Additional Coverage Tests', () => {
         [123],
         expect.any(Array),
         undefined,
-        WorkItemExpand.All
+        WorkItemExpand.None
       );
     });
 
