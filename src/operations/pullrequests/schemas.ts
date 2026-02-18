@@ -15,6 +15,9 @@ export interface PullRequestCommentResponse {
     status: string;
     threadId: number;
     author: string;
+    replyCount: number;
+    lastReplyAuthor?: string;
+    lastReplyDate?: string;
 }
 
 interface ValidThread extends GitPullRequestCommentThread {
@@ -23,6 +26,7 @@ interface ValidThread extends GitPullRequestCommentThread {
         author: {
             displayName: string;
         };
+        publishedDate?: Date;
     }>;
     threadContext: {
         filePath: string;
@@ -36,7 +40,7 @@ interface ValidThread extends GitPullRequestCommentThread {
 /**
  * Convert CommentThreadStatus enum value to string representation
  */
-function getCommentThreadStatusString(status: CommentThreadStatus): string {
+export function getCommentThreadStatusString(status: CommentThreadStatus): string {
     switch (status) {
         case CommentThreadStatus.Unknown:
             return 'Unknown';
@@ -72,19 +76,28 @@ export function processPullRequestComments(threads: GitPullRequestCommentThread[
             );
         })
         // Map to our response format
-        .map(thread => ({
-            filePath: thread.threadContext.filePath,
-            location: {
-                startLine: thread.threadContext.rightFileStart?.line,
-                endLine: thread.threadContext.rightFileEnd?.line,
-                startOffset: thread.threadContext.rightFileStart?.offset,
-                endOffset: thread.threadContext.rightFileEnd?.offset
-            },
-            content: thread.comments[0].content,
-            status: getCommentThreadStatusString(thread.status),
-            threadId: thread.id,
-            author: thread.comments[0].author.displayName
-        }));
+        .map(thread => {
+            const replies = thread.comments.slice(1);
+            const lastReply = replies.length > 0 ? replies[replies.length - 1] : undefined;
+            return {
+                filePath: thread.threadContext.filePath,
+                location: {
+                    startLine: thread.threadContext.rightFileStart?.line,
+                    endLine: thread.threadContext.rightFileEnd?.line,
+                    startOffset: thread.threadContext.rightFileStart?.offset,
+                    endOffset: thread.threadContext.rightFileEnd?.offset
+                },
+                content: thread.comments[0].content,
+                status: getCommentThreadStatusString(thread.status),
+                threadId: thread.id,
+                author: thread.comments[0].author.displayName,
+                replyCount: replies.length,
+                ...(lastReply && {
+                    lastReplyAuthor: lastReply.author?.displayName,
+                    lastReplyDate: lastReply.publishedDate?.toISOString()
+                })
+            };
+        });
 }
 
 // Zod schemas for operations
@@ -147,3 +160,35 @@ export const GetPRFilesSchema = z.object({
     projectId: z.string(),
     compareTo: z.string().optional()
 });
+
+export const GetPRThreadCommentsSchema = z.object({
+    repositoryId: z.string(),
+    pullRequestId: z.number(),
+    threadId: z.number(),
+    projectId: z.string()
+});
+
+export const ListPRThreadsSchema = z.object({
+    repositoryId: z.string(),
+    pullRequestId: z.number(),
+    projectId: z.string()
+});
+
+export interface PullRequestThreadCommentDetail {
+    commentId: number;
+    parentCommentId: number;
+    content: string;
+    author: string;
+    commentType: string;
+    publishedDate: string;
+    lastUpdatedDate: string;
+}
+
+export interface PullRequestThreadCommentResponse {
+    threadId: number;
+    status: string;
+    filePath: string;
+    startLine?: number;
+    endLine?: number;
+    comments: PullRequestThreadCommentDetail[];
+}

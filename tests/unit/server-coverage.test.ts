@@ -57,6 +57,76 @@ const CreateWorkItemSchema = z.object({
   additionalFields: z.record(z.string(), z.any()).optional()
 });
 
+const GetPullRequestSchema = z.object({
+  repositoryId: z.string(),
+  pullRequestId: z.number(),
+  projectId: z.string()
+});
+
+const ListPullRequestsSchema = z.object({
+  repositoryId: z.string(),
+  projectId: z.string(),
+  status: z.enum(['active', 'abandoned', 'completed', 'all']).optional(),
+  creatorId: z.string().optional(),
+  reviewerId: z.string().optional(),
+  sourceRefName: z.string().optional(),
+  targetRefName: z.string().optional(),
+  includeLinks: z.boolean().optional()
+});
+
+const ListPRCommentsSchema = z.object({
+  repositoryId: z.string(),
+  pullRequestId: z.number(),
+  projectId: z.string()
+});
+
+const UpdatePRCommentSchema = z.object({
+  repositoryId: z.string(),
+  pullRequestId: z.number(),
+  threadId: z.number(),
+  commentId: z.number(),
+  content: z.string(),
+  projectId: z.string()
+});
+
+const UpdatePRThreadStatusSchema = z.object({
+  repositoryId: z.string(),
+  pullRequestId: z.number(),
+  threadId: z.number(),
+  status: z.enum(['Unknown', 'Active', 'Fixed', 'WontFix', 'Closed', 'ByDesign', 'Pending']),
+  projectId: z.string()
+});
+
+const CreatePRCommentSchema = z.object({
+  repositoryId: z.string(),
+  pullRequestId: z.number(),
+  content: z.string(),
+  projectId: z.string(),
+  filePath: z.string().optional(),
+  lineNumber: z.number().optional(),
+  parentCommentId: z.number().optional()
+});
+
+const GetPRFilesSchema = z.object({
+  repositoryId: z.string(),
+  pullRequestId: z.number(),
+  projectId: z.string(),
+  compareTo: z.string().optional()
+});
+
+const GetPRThreadCommentsSchema = z.object({
+  repositoryId: z.string(),
+  pullRequestId: z.number(),
+  threadId: z.number(),
+  projectId: z.string()
+});
+
+const ListPRThreadsSchema = z.object({
+  repositoryId: z.string(),
+  pullRequestId: z.number(),
+  projectId: z.string()
+});
+
 // Import the mocked modules
 import * as projectsMock from '../../src/operations/projects';
 import * as workitemsMock from '../../src/operations/workitems';
@@ -107,6 +177,27 @@ jest.mock('../../src/operations/repositories', () => ({
   listRepositories: jest.fn()
 }));
 
+jest.mock('../../src/operations/pullrequests', () => ({
+  GetPullRequestSchema,
+  ListPullRequestsSchema,
+  ListPRCommentsSchema,
+  UpdatePRCommentSchema,
+  UpdatePRThreadStatusSchema,
+  CreatePRCommentSchema,
+  GetPRFilesSchema,
+  GetPRThreadCommentsSchema,
+  ListPRThreadsSchema,
+  getPullRequest: jest.fn(),
+  listPullRequests: jest.fn(),
+  listPRComments: jest.fn(),
+  updatePRComment: jest.fn(),
+  updatePRThreadStatus: jest.fn(),
+  createPRComment: jest.fn(),
+  getPRFiles: jest.fn(),
+  getPRThreadComments: jest.fn(),
+  listPRThreads: jest.fn()
+}));
+
 // Define mock server class
 class MockServerClass {
   setRequestHandler = jest.fn();
@@ -133,6 +224,7 @@ import { createAzureDevOpsServer } from '../../src/server';
 import { getProject, listProjects } from '../../src/operations/projects';
 import { getWorkItem, listWorkItems, createWorkItem } from '../../src/operations/workitems';
 import { getRepository, listRepositories } from '../../src/operations/repositories';
+import { getPRThreadComments, listPRThreads } from '../../src/operations/pullrequests';
 
 describe('Server Coverage Tests', () => {
   let mockServer: MockServerClass;
@@ -316,6 +408,142 @@ describe('Server Coverage Tests', () => {
       const resultData = JSON.parse(result.content[0].text);
       expect(resultData).toEqual([{ id: 'repo1', name: 'Repository 1' }]);
       expect(listRepositories).toHaveBeenCalledWith(expect.anything(), { projectId: 'project1' });
+    });
+
+    it('should handle get_pr_thread_comments tool call', async () => {
+      const mockThreadResponse = {
+        threadId: 456,
+        status: 'Active',
+        filePath: '/src/MyFile.cs',
+        startLine: 42,
+        endLine: 42,
+        comments: [
+          {
+            commentId: 1,
+            parentCommentId: 0,
+            content: 'nit: seems redundant',
+            author: 'Sergey Mudrov',
+            commentType: 'text',
+            publishedDate: '2025-01-15T10:00:00.000Z',
+            lastUpdatedDate: '2025-01-15T10:00:00.000Z'
+          },
+          {
+            commentId: 2,
+            parentCommentId: 1,
+            content: 'Good point, will fix',
+            author: 'Luke Pearson',
+            commentType: 'text',
+            publishedDate: '2025-01-15T11:00:00.000Z',
+            lastUpdatedDate: '2025-01-15T11:00:00.000Z'
+          }
+        ]
+      };
+      (getPRThreadComments as jest.Mock).mockResolvedValueOnce(mockThreadResponse);
+
+      const result = await callToolHandler({
+        params: {
+          name: 'get_pr_thread_comments',
+          arguments: {
+            repositoryId: 'repo1',
+            pullRequestId: 123,
+            threadId: 456,
+            projectId: 'proj1'
+          }
+        }
+      });
+
+      const resultData = JSON.parse(result.content[0].text);
+      expect(resultData.threadId).toBe(456);
+      expect(resultData.status).toBe('Active');
+      expect(resultData.filePath).toBe('/src/MyFile.cs');
+      expect(resultData.startLine).toBe(42);
+      expect(resultData.comments).toHaveLength(2);
+      expect(resultData.comments[0].content).toBe('nit: seems redundant');
+      expect(resultData.comments[0].commentType).toBe('text');
+      expect(resultData.comments[1].parentCommentId).toBe(1);
+      expect(getPRThreadComments).toHaveBeenCalledWith(expect.anything(), {
+        repositoryId: 'repo1',
+        pullRequestId: 123,
+        threadId: 456,
+        projectId: 'proj1'
+      });
+    });
+
+    it('should handle list_pr_threads tool call', async () => {
+      const mockThreads = [
+        {
+          threadId: 100,
+          status: 'Active',
+          filePath: '/src/MyFile.cs',
+          startLine: 42,
+          endLine: 42,
+          comments: [
+            {
+              commentId: 1,
+              parentCommentId: 0,
+              content: 'Initial comment',
+              author: 'Reviewer',
+              commentType: 'text',
+              publishedDate: '2025-01-15T10:00:00.000Z',
+              lastUpdatedDate: '2025-01-15T10:00:00.000Z'
+            },
+            {
+              commentId: 2,
+              parentCommentId: 1,
+              content: 'Reply to comment',
+              author: 'Author',
+              commentType: 'text',
+              publishedDate: '2025-01-15T11:00:00.000Z',
+              lastUpdatedDate: '2025-01-15T11:00:00.000Z'
+            }
+          ]
+        },
+        {
+          threadId: 200,
+          status: 'Fixed',
+          filePath: '/src/Other.cs',
+          startLine: 10,
+          endLine: 15,
+          comments: [
+            {
+              commentId: 3,
+              parentCommentId: 0,
+              content: 'Resolved comment',
+              author: 'Reviewer',
+              commentType: 'text',
+              publishedDate: '2025-01-14T09:00:00.000Z',
+              lastUpdatedDate: '2025-01-14T09:00:00.000Z'
+            }
+          ]
+        }
+      ];
+      (listPRThreads as jest.Mock).mockResolvedValueOnce(mockThreads);
+
+      const result = await callToolHandler({
+        params: {
+          name: 'list_pr_threads',
+          arguments: {
+            repositoryId: 'repo1',
+            pullRequestId: 123,
+            projectId: 'proj1'
+          }
+        }
+      });
+
+      const resultData = JSON.parse(result.content[0].text);
+      expect(resultData).toHaveLength(2);
+      expect(resultData[0].threadId).toBe(100);
+      expect(resultData[0].status).toBe('Active');
+      expect(resultData[0].comments).toHaveLength(2);
+      expect(resultData[0].comments[1].content).toBe('Reply to comment');
+      expect(resultData[1].threadId).toBe(200);
+      expect(resultData[1].status).toBe('Fixed');
+      expect(resultData[1].comments).toHaveLength(1);
+      expect(listPRThreads).toHaveBeenCalledWith(expect.anything(), {
+        repositoryId: 'repo1',
+        pullRequestId: 123,
+        projectId: 'proj1'
+      });
     });
 
     it('should handle ZodError and return validation error message', async () => {

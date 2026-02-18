@@ -136,6 +136,16 @@ export function createAzureDevOpsServer(config: AzureDevOpsConfig): Server {
           inputSchema: zodToJsonSchema(pullrequests.CreatePRCommentSchema),
         },
         {
+          name: "get_pr_thread_comments",
+          description: "Get all comments and replies in a specific pull request comment thread",
+          inputSchema: zodToJsonSchema(pullrequests.GetPRThreadCommentsSchema),
+        },
+        {
+          name: "list_pr_threads",
+          description: "List all comment threads in a pull request with full replies. Filters out system comments and returns only file-level discussion threads.",
+          inputSchema: zodToJsonSchema(pullrequests.ListPRThreadsSchema),
+        },
+        {
           name: "get_pr_files",
           description: "Get files changed in a pull request",
           inputSchema: zodToJsonSchema(pullrequests.GetPRFilesSchema),
@@ -299,6 +309,20 @@ export function createAzureDevOpsServer(config: AzureDevOpsConfig): Server {
         case 'create_pr_comment': {
           const args = pullrequests.CreatePRCommentSchema.parse(request.params.arguments);
           const result = await pullrequests.createPRComment(connection, args);
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          };
+        }
+        case 'get_pr_thread_comments': {
+          const args = pullrequests.GetPRThreadCommentsSchema.parse(request.params.arguments);
+          const result = await pullrequests.getPRThreadComments(connection, args);
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          };
+        }
+        case 'list_pr_threads': {
+          const args = pullrequests.ListPRThreadsSchema.parse(request.params.arguments);
+          const result = await pullrequests.listPRThreads(connection, args);
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };

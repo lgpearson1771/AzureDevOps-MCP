@@ -1,6 +1,7 @@
 import { WebApi } from 'azure-devops-node-api';
 import {
   CommentThreadStatus,
+  CommentType,
   GitPullRequest,
   GitPullRequestChange,
   GitPullRequestCommentThread,
@@ -135,6 +136,50 @@ export async function listPRComments(
 }
 
 /**
+ * List all threads in a pull request with full comment replies
+ */
+export async function listPRThreads(
+  connection: WebApi,
+  args: z.infer<typeof schemas.ListPRThreadsSchema>
+): Promise<schemas.PullRequestThreadCommentResponse[]> {
+  try {
+    const gitApi = await connection.getGitApi();
+    const threads = await gitApi.getThreads(
+      args.repositoryId,
+      args.pullRequestId,
+      args.projectId
+    );
+
+    return threads
+      .filter(thread =>
+        thread.threadContext?.filePath &&
+        thread.comments?.some(c => c.commentType !== CommentType.System) &&
+        typeof thread.id === 'number'
+      )
+      .map(thread => ({
+        threadId: thread.id ?? 0,
+        status: schemas.getCommentThreadStatusString(thread.status ?? CommentThreadStatus.Unknown),
+        filePath: thread.threadContext?.filePath ?? '',
+        startLine: thread.threadContext?.rightFileStart?.line,
+        endLine: thread.threadContext?.rightFileEnd?.line,
+        comments: (thread.comments ?? [])
+          .filter(c => c.commentType !== CommentType.System)
+          .map(comment => ({
+            commentId: comment.id ?? 0,
+            parentCommentId: comment.parentCommentId ?? 0,
+            content: comment.content ?? '',
+            author: comment.author?.displayName ?? 'Unknown',
+            commentType: getCommentTypeString(comment.commentType),
+            publishedDate: comment.publishedDate?.toISOString() ?? '',
+            lastUpdatedDate: comment.lastUpdatedDate?.toISOString() ?? ''
+          }))
+      }));
+  } catch (error) {
+    throw new Error(`Failed to list PR threads: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
  * Update a pull request comment
  */
 export async function updatePRComment(
@@ -248,6 +293,61 @@ export async function createPRComment(
     return newThread;
   } catch (error) {
     throw new Error(`Failed to create PR comment: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Convert CommentType enum to string
+ */
+function getCommentTypeString(commentType?: CommentType): string {
+  switch (commentType) {
+    case CommentType.Text:
+      return 'text';
+    case CommentType.CodeChange:
+      return 'codeChange';
+    case CommentType.System:
+      return 'system';
+    default:
+      return 'unknown';
+  }
+}
+
+/**
+ * Get all comments/replies in a specific pull request thread
+ */
+export async function getPRThreadComments(
+  connection: WebApi,
+  args: z.infer<typeof schemas.GetPRThreadCommentsSchema>
+): Promise<schemas.PullRequestThreadCommentResponse> {
+  try {
+    const gitApi = await connection.getGitApi();
+    const thread = await gitApi.getPullRequestThread(
+      args.repositoryId,
+      args.pullRequestId,
+      args.threadId,
+      args.projectId
+    );
+
+    const comments: schemas.PullRequestThreadCommentDetail[] = (thread.comments ?? []).map(comment => ({
+      commentId: comment.id ?? 0,
+      parentCommentId: comment.parentCommentId ?? 0,
+      content: comment.content ?? '',
+      author: comment.author?.displayName ?? 'Unknown',
+      commentType: getCommentTypeString(comment.commentType),
+      publishedDate: comment.publishedDate?.toISOString() ?? '',
+      lastUpdatedDate: comment.lastUpdatedDate?.toISOString() ?? ''
+    }));
+
+    return {
+      threadId: thread.id ?? 0,
+      status: schemas.getCommentThreadStatusString(thread.status ?? CommentThreadStatus.Unknown),
+      filePath: thread.threadContext?.filePath ?? '',
+      startLine: thread.threadContext?.rightFileStart?.line,
+      endLine: thread.threadContext?.rightFileEnd?.line,
+      comments
+    };
+  } catch (error) {
+    throw new Error(`Failed to get PR thread comments: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
